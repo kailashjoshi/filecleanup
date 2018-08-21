@@ -1,1 +1,9 @@
-file1
+const spawn = require('child_process').spawn;
+let execute_bash = function (command) {
+   spawn(command, {
+        shell: true,
+        stdio: 'inherit'
+    });
+};
+let cmd = 'cd '+ home_dir()+'&&'+'ansible-playbook ' + playbook + ' -i ' + inventory + ' --extra-vars ' + '\'' + json + '\'';
+execute_bash(cmd);
