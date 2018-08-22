@@ -38,3 +38,16 @@ helper.execCB(
 result.on('exit', function(code){
             return code
         });
+
+#!/usr/bin/env bash
+
+cwd="`dirname \"$0\"`"
+
+  ls=`ls -ld "$cwd/automation"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    cwd="`dirname \"$link\"`"
+  fi
+
+export AUTOMATION_HOME="`echo "$(cd "$(dirname "$cwd/..")"; pwd)/$(basename "$cwd/..")"`"
+$cwd/libs/automation.js
