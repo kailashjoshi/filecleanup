@@ -1,9 +1,40 @@
-const spawn = require('child_process').spawn;
-let execute_bash = function (command) {
-   spawn(command, {
+/**
+ * Execute Bash Command
+ * @param command
+ */
+function exec(command) {
+
+    return spawn(command, {
         shell: true,
         stdio: 'inherit'
     });
-};
-let cmd = 'cd '+ home_dir()+'&&'+'ansible-playbook ' + playbook + ' -i ' + inventory + ' --extra-vars ' + '\'' + json + '\'';
-execute_bash(cmd);
+}
+
+/**
+ * Promise for Bash Command
+ * @param value
+ * @returns {Promise<void>}
+ */
+async function execCB(value) {
+    try {
+
+        return await exec(value);
+
+    }
+    catch (error) {
+        console.log(error)
+    }
+}
+
+helper.execCB(
+                helper.execute_ansible('project.yml', JSON.stringify(all_answers, null, '  '),
+                    helper.home_dir() + '/environments/project'))
+                .then(function (result) {
+                    result.on('exit', function (code) {
+                        console.log(code);
+                    });
+                });
+                
+result.on('exit', function(code){
+            return code
+        });
