@@ -1,1 +1,93 @@
-file3
+const fs = require('fs');
+const jsome = require('jsome');
+const spawn = require('child_process').spawn;
+
+jsome.colors.bool = ['red', 'bgYellow'];
+jsome.colors.attr = ['green', 'bold'];
+jsome.colors.quot = ['yellow', 'bold'];
+jsome.colors.punc = ['yellow', 'bold'];
+jsome.colors.brack = ['yellow', 'bold'];
+
+/**
+ * Check if directory exist
+ * @param name
+ * @returns {boolean}
+ */
+let is_dir_exist = function (name) {
+    if (fs.existsSync(name)) {
+        console.log("\n");
+        console.log("Project already exist, please choose unique name");
+    }
+    return fs.existsSync(name);
+};
+/**
+ * Get home histector of the script
+ * @returns {*}
+ */
+let home_dir = function () {
+    return process.env.AUTOMATION_HOME;
+};
+
+/**
+ * Generate Ansbile command to be executed
+ * @param playbook
+ * @param json
+ * @param inventory
+ * @returns {string}
+ */
+let generate_cmd = function (playbook, json, inventory) {
+    let cmd = 'cd ' + home_dir() + '&&' + 'ansible-playbook ' + playbook + ' -i ' + inventory + ' --extra-vars ' + '\'' + json + '\'';
+    return cmd;
+};
+
+/**
+ * Generate Hostnames
+ * @param data
+ * @returns {*}
+ */
+var generate = function (data) {
+    data["master1"] = data.project_name + "-r01mstr.emc.local";
+    data["master2"] = data.project_name + "-r02mstr.emc.local";
+    data["edge1"] = data.project_name + "-r01edge.emc.local";
+    data["edge2"] = data.project_name + "-r02edge.emc.local";
+    data["db_server"] = data.project_name + "-r01mstr.emc.local";
+    var num_of_worker = data.total_node - 3;
+    var worker_nodes = '';
+    for (i = 1; i < num_of_worker; i++) {
+        worker_nodes = worker_nodes + data.project_name + "-wn" + pad(i).toString() + ".emc.local,";
+    }
+    data["worker_nodes"] = worker_nodes;
+    return data;
+};
+
+/**
+ * Number formatting for hostname
+ * @param d
+ * @returns {string}
+ */
+function pad(d) {
+    return (d < 10) ? '0' + d.toString() : d.toString();
+}
+
+/**
+ * Execute bash command and return exit code
+ * @param command
+ * @param fn
+ */
+function executes(command, fn) {
+    spawn(command, {
+        shell: true,
+        stdio: 'inherit'
+    })
+        .on('exit', function (code) {
+            fn(code);
+        });
+}
+
+module.exports = {
+    is_dir_exist,
+    home_dir,
+    generate_cmd,
+    generate,
+    executes
+};
