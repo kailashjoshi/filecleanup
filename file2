@@ -1,1 +1,289 @@
-file2
+#!/usr/bin/env node
+/**
+ * Created by Kailash Joshi on 8/14/18.
+ */
+
+"use strict";
+const inquirer = require("inquirer");
+const chalk = require('chalk');
+const helper = require('./helper');
+const jsome = require('jsome');
+
+
+jsome.colors.bool = ['red', 'bgYellow'];
+jsome.colors.attr = ['green', 'bold'];
+jsome.colors.quot = ['yellow', 'bold'];
+jsome.colors.punc = ['yellow', 'bold'];
+jsome.colors.brack = ['yellow', 'bold'];
+
+const project_type = {
+    type: 'list',
+    name: 'project_type',
+    message: 'What type of project you want to create?',
+    choices: ['Create', 'Expand']
+};
+const project_creation = {
+    type: 'list',
+    name: 'project_type',
+    message: 'How would you like to create project?',
+    choices: ['Automatic', 'Manual']
+};
+const expand = [
+    {
+        type: 'input',
+        name: 'project_name',
+        message: "What's your project name",
+        validate: function (text) {
+            const project_pth = helper.home_dir() + '/environments/' + text;
+            return helper.is_dir_exist(project_pth);
+        }
+    }, {
+        type: 'checkbox',
+        name: 'expand',
+        message: 'What tools you want to add?',
+        choices: [
+            {
+                name: 'Podium'
+                , checked: true
+            },
+            new inquirer.Separator(),
+            {
+                name: 'Pipeline Controller'
+
+            },
+            new inquirer.Separator(),
+            {
+                name: 'TIBCO'
+            },
+            new inquirer.Separator(),
+            {
+                name: ' Others',
+                disabled: 'Unavailable at this time'
+            }]
+    }];
+const confirmation = [{
+    type: 'confirm',
+    name: 'detail',
+    message: 'Do you want to start installation?'
+}];
+const new_project = [
+
+    {
+        type: 'input',
+        name: 'project_name',
+        message: "What's your project name"
+    },
+    {
+        type: 'confirm',
+        name: 'reinstall',
+        message: 'Project Already exist, do you want to reinstall?',
+        when: function (answers) {
+            const project_pth = helper.home_dir() + '/environments/' + answers.project_name;
+            return helper.is_dir_exist(project_pth);
+        }
+    },
+    {
+        type: 'confirm',
+        name: 'podium',
+        message: 'Do you like install podium and pipeline aswell?'
+    },
+    {
+        type: 'input',
+        name: 'master1',
+        message: "Enter Master1 node hostname"
+    },
+    {
+        type: 'input',
+        name: 'master2',
+        message: "Enter Master2 node hostname"
+    },
+    {
+        type: 'input',
+        name: 'edge1',
+        message: "Enter edge1 node hostname"
+    },
+    {
+        type: 'input',
+        name: 'edge2',
+        message: "Enter edge2 node hostname"
+    },
+    {
+        type: 'input',
+        name: 'db_server',
+        message: "enter database hostname"
+    },
+    {
+        type: 'editor',
+        name: 'worker_nodes',
+        message: 'Please enter list of worker node hostnames',
+        validate: function (text) {
+            if (text.split(',').length < 1) {
+                return 'You must enter at leas one hostname';
+            }
+
+            return true;
+        },
+        filter: function (val) {
+            const a = val.split('\n');
+            return a.toString();
+        }
+    },
+    {
+        type: 'input',
+        name: 'podium_hostname',
+        message: "enter podium hostname",
+        when: function (answers) {
+            return answers.podium;
+        }
+
+    }
+];
+const auto_new_project = [
+    {
+        type: 'input',
+        name: 'project_name',
+        message: "What's your project name"
+    },
+    {
+        type: 'confirm',
+        name: 'reinstall',
+        message: 'Project Already exist, do you want to reinstall?',
+        when: function (answers) {
+            const project_pth = helper.home_dir() + '/environments/' + answers.project_name;
+            return helper.is_dir_exist(project_pth);
+        }
+    },
+    {
+        type: 'confirm',
+        name: 'podium',
+        message: 'Do you like install podium and pipeline aswell?'
+        ,
+        when: function (answers) {
+            return !answers.reinstall;
+        }
+    },
+    {
+        type: 'input',
+        name: 'total_node',
+        message: 'Total number of nodes?',
+        when: function (answers) {
+            return !answers.reinstall;
+        },
+        validate: function (value) {
+            var valid = !isNaN(parseFloat(value));
+            if (valid) {
+                valid = (parseFloat(value) > 4);
+                return valid || 'Minimum number of nodes is 5';
+            }
+            return valid || 'Please enter a number';
+        },
+        filter: Number
+    },
+];
+
+/**
+ * Create Project Automatically
+ */
+function create_project_automatically() {
+    inquirer.prompt(auto_new_project).then(answers => {
+        answers = helper.generate(answers);
+        console.log(chalk.yellow.bgRed.bold('Summary of the project'));
+        jsome(answers);
+        summary(answers);
+    });
+}
+
+/**
+ * Create Project Manually or Automatically
+ */
+function projects() {
+    inquirer.prompt(project_creation).then(answers => {
+        if (answers.project_type === 'Automatic'
+        ) {
+            // new_project_creation_cdh();
+            create_project_automatically();
+
+        }
+        else {
+            new_project_creation();
+
+        }
+    });
+}
+
+/**
+ * Create new ansible project
+ */
+function new_project_creation() {
+    inquirer.prompt(new_project).then(answers => {
+        console.log(chalk.yellow.bgRed.bold('Summary of the project'));
+        jsome(answers);
+        summary(answers);
+    })
+    ;
+}
+
+/**
+ * Summary of the project
+ * @param all_answers
+ */
+function summary(all_answers) {
+    inquirer.prompt(confirmation).then(answers => {
+
+        if (!answers.detail) {
+            main();
+        } else {
+            console.log("Installing ... " + all_answers.project_name);
+            all_answers.project_name = helper.home_dir() + '/environments/' + all_answers.project_name;
+
+            // console.log('Exit code is '+code);
+            const cmd_createproject = helper.generate_cmd('project.yml', JSON.stringify(all_answers, null, '  '),
+                helper.home_dir() + '/environments/project');
+            const cmd_createvm = 'echo "creating vm"';
+            const cmd_createcore = 'echo "creating core"';
+            const cmd_createingestion = 'echo "creating ingestion"';
+            helper.executes(cmd_createproject, function (result) {
+                if (result == 0) {
+                    helper.executes(cmd_createvm, function (result) {
+                        if (result == 0) {
+                            helper.executes(cmd_createcore, function (result) {
+                                if (result == 0) {
+                                    helper.executes(cmd_createingestion, function (result) {
+                                        if (result == 0) {
+                                            console.log("Sucessfully completed")
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    })
+                }
+            });
+
+        }
+    });
+}
+
+/**
+ * Expansion of Existing Project
+ */
+function expansion() {
+    inquirer.prompt(expand).then(answers => {
+        console.log(JSON.stringify(answers, null, '  '));
+    })
+    ;
+}
+
+console.log('Ansible Automation EDPP');
+
+inquirer.prompt(project_type).then(answers => {
+    if (answers.project_type === 'Create'
+    ) {
+        projects();
+
+    }
+    else {
+        expansion();
+
+    }
+});
