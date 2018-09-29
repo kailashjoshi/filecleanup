@@ -1,53 +1,26 @@
-/**
- * Execute Bash Command
- * @param command
- */
-function exec(command) {
+---
 
-    return spawn(command, {
-        shell: true,
-        stdio: 'inherit'
-    });
-}
+- shell: vgs|grep system|awk -F ' ' '{print $7}'|awk -F '.' '{print $1}'
+  register: vgs
+  changed_when: False
 
-/**
- * Promise for Bash Command
- * @param value
- * @returns {Promise<void>}
- */
-async function execCB(value) {
-    try {
+- shell: lvs|grep root|awk -F ' ' '{print $4}'|awk -F '.' '{print $1}'
+  register: lvs
+  changed_when: False
 
-        return await exec(value);
+- name: Validate Root Disk space
+  fail:
+    msg: "Not enough Space, please contact your system Administration"
+  when: (lvs.stdout|int < 7 and vgs.stdout|int < 7)
 
-    }
-    catch (error) {
-        console.log(error)
-    }
-}
+- shell: vgs | tail -1|awk -F ' ' '{print $1}'
+  register: vgs_name
+  changed_when: False
 
-helper.execCB(
-                helper.execute_ansible('project.yml', JSON.stringify(all_answers, null, '  '),
-                    helper.home_dir() + '/environments/project'))
-                .then(function (result) {
-                    result.on('exit', function (code) {
-                        console.log(code);
-                    });
-                });
-                
-result.on('exit', function(code){
-            return code
-        });
-
-#!/usr/bin/env bash
-
-cwd="`dirname \"$0\"`"
-
-  ls=`ls -ld "$cwd/automation"`
-  link=`expr "$ls" : '.*-> \(.*\)$'`
-  if expr "$link" : '/.*' > /dev/null; then
-    cwd="`dirname \"$link\"`"
-  fi
-
-export AUTOMATION_HOME="`echo "$(cd "$(dirname "$cwd/..")"; pwd)/$(basename "$cwd/..")"`"
-$cwd/libs/automation.js
+- name: Extend the logical volume root to 1024m.
+  lvol:
+    vg: "{{ vgs_name.stdout }}"
+    lv: root
+    size: 9024
+    resizefs: true
+  when: (lvs.stdout|int < 50)
